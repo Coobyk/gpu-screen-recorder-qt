@@ -11,6 +11,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QCheckBox>
+#include <QCloseEvent>
 #include <QSpinBox>
 #include <QLineEdit>
 #include <QComboBox>
@@ -30,6 +31,7 @@
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
 #include <QDBusInterface>
+#include <QApplication>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
@@ -209,6 +211,8 @@ private:
     void onQualityChanged(int index);
     void onViewModeChanged(int index);
     void onRecordAreaChanged(int index);
+
+    void closeEvent(QCloseEvent *event) override;
 
     QSystemTrayIcon *m_trayIcon = nullptr;
     QMenu *m_trayMenu = nullptr;
@@ -487,7 +491,7 @@ void MainWindow::setupSystemTray() {
     m_trayMenu->addSeparator();
 
     QAction *exitAction = m_trayMenu->addAction("Exit");
-    connect(exitAction, &QAction::triggered, this, &QMainWindow::close);
+    connect(exitAction, &QAction::triggered, qApp, &QApplication::quit);
 
     m_trayIcon->setContextMenu(m_trayMenu);
 }
@@ -2159,6 +2163,16 @@ void MainWindow::startGpuScreenRecorder(std::vector<const char*> args) {
         _exit(127);
     }
     m_childPid = pid;
+}
+
+void MainWindow::closeEvent(QCloseEvent *event) {
+    // "X" always means "hide to tray", matching the tray menu's "Hide window".
+    // This makes the intent explicit instead of relying on quitOnLastWindowClosed(false)
+    // to silently swallow the close.
+    event->ignore();
+    hide();
+    m_windowHidden = true;
+    m_showHideAction->setText("Show window");
 }
 
 void MainWindow::onGlobalShortcutActivated(const QString &shortcutId) {
